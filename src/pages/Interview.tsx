@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CopyBox, PasteBox } from '../components/CopyPaste';
 import { Card, Empty, HandbookLink, Notice, Page } from '../components/ui';
 import { AiError, createClient } from '../lib/ai/client';
 import {
@@ -10,12 +11,14 @@ import {
   INTERVIEW_ENDED,
   OPENING_MESSAGE,
 } from '../lib/ai/interview';
+import { BOARD_HEADER, parsePortableDebrief, portableInterviewPrompt } from '../lib/ai/portable';
 import { db, type InterviewMessage, type InterviewSession } from '../lib/db';
 import { useProgramme } from '../lib/hooks';
-import { EMPTY_PROFILE, setSetting, useSetting } from '../lib/settings';
+import { EMPTY_PROFILE, setSetting, useSetting, type InterviewProfile } from '../lib/settings';
 
 export default function Interview() {
   const prog = useProgramme();
+  const mode = useSetting('aiMode');
   const apiKey = useSetting('apiKey');
   const acknowledged = useSetting('aiAcknowledged');
   const charter = useSetting('charter');
@@ -23,10 +26,10 @@ export default function Interview() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const active = sessions?.find((s) => s.id === activeId) ?? null;
 
-  if (!prog || apiKey === undefined || !sessions) return null;
+  if (!prog || apiKey === undefined || mode === undefined || !sessions) return null;
+  const profile = charter?.profile ?? EMPTY_PROFILE;
 
   async function start() {
-    const profile = charter?.profile ?? EMPTY_PROFILE;
     const id = await db.interviews.add({
       date: prog!.today,
       system: boardSystemPrompt(profile),
@@ -45,13 +48,17 @@ export default function Interview() {
         </>
       }
     >
-      {!apiKey ? (
+      {active ? (
+        <Board session={active} apiKey={apiKey} onClose={() => setActiveId(null)} />
+      ) : mode === 'subscription' ? (
+        <SubscriptionBoard profile={profile} date={prog.today} onImported={setActiveId} />
+      ) : !apiKey ? (
         <Notice>
-          The mock board needs your Anthropic API key —{' '}
+          API mode needs your Anthropic API key —{' '}
           <Link className="underline" to="/settings">
             add it in Settings
           </Link>
-          .
+          , or switch to Claude subscription mode there.
         </Notice>
       ) : !acknowledged ? (
         <Notice>
@@ -61,21 +68,9 @@ export default function Interview() {
             I understand
           </button>
         </Notice>
-      ) : active ? (
-        <Board session={active} apiKey={apiKey} onClose={() => setActiveId(null)} />
       ) : (
         <Card title="New interview">
-          {!charter?.profile?.homeState && (
-            <div className="mb-3">
-              <Notice>
-                Fill your profile in the{' '}
-                <Link className="underline" to="/charter">
-                  Charter
-                </Link>{' '}
-                so the board can ask about your home state, education and hobbies.
-              </Notice>
-            </div>
-          )}
+          {!profile.homeState && <ProfileHint />}
           <p className="muted mb-3">
             About 15 questions. Answer as you would in the room — then ask for the debrief.
           </p>
@@ -96,6 +91,7 @@ export default function Interview() {
                   <span>
                     {s.date} · {s.messages.filter((m) => m.role === 'assistant').length} questions
                     {s.debrief ? ` · avg ${avgScore(s.debrief.scores)}/5` : ''}
+                    {s.source === 'subscription' ? ' · via Claude' : ''}
                   </span>
                   <button
                     className="btn-ghost px-2 py-1 text-xs"
@@ -110,6 +106,66 @@ export default function Interview() {
         </Card>
       )}
     </Page>
+  );
+}
+
+function ProfileHint() {
+  return (
+    <div className="mb-3">
+      <Notice>
+        Fill your profile in the{' '}
+        <Link className="underline" to="/charter">
+          Charter
+        </Link>{' '}
+        so the board can ask about your home state, education and hobbies.
+      </Notice>
+    </div>
+  );
+}
+
+function SubscriptionBoard({
+  profile,
+  date,
+  onImported,
+}: {
+  profile: InterviewProfile;
+  date: string;
+  onImported: (id: number) => void;
+}) {
+  return (
+    <Card title="New interview with Claude">
+      {!profile.homeState && <ProfileHint />}
+      <ol className="muted mb-3 list-decimal space-y-1 pl-5 text-sm">
+        <li>Copy the board prompt (it includes your Charter profile).</li>
+        <li>
+          In your terminal, open Claude Code in this repo (<code>claude</code>) and paste it — or
+          type <code>/rewire-coach</code> first. claude.ai and the Claude app work too.
+        </li>
+        <li>Answer the board there, as you would in the room — about 15 questions.</li>
+        <li>
+          When the Chairperson says “that will be all” (or you type <code>DEBRIEF</code>), paste
+          Claude’s whole reply here.
+        </li>
+      </ol>
+      <div className="space-y-4">
+        <CopyBox text={portableInterviewPrompt(profile)} label="Copy board prompt" />
+        <PasteBox
+          label="Claude’s debrief"
+          button="Import debrief"
+          onSubmit={async (text) => {
+            const { debrief, messages } = parsePortableDebrief(text);
+            const id = await db.interviews.add({
+              date,
+              system: BOARD_HEADER,
+              messages,
+              debrief,
+              source: 'subscription',
+            });
+            onImported(id as number);
+          }}
+        />
+      </div>
+    </Card>
   );
 }
 
@@ -146,6 +202,8 @@ function Board({
       const turn = await boardTurn(createClient(apiKey), session.system, messages, (d) =>
         setStreaming((s) => s + d),
       );
+      // Hide the live bubble before the saved message renders, so the question never shows twice.
+      setStreaming('');
       await db.interviews.update(session.id!, {
         messages: [...messages, { role: 'assistant', content: turn.text, raw: turn.raw }],
       });

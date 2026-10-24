@@ -2,11 +2,16 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AiError, createClient } from '../lib/ai/client';
 import { evaluate, type EvaluationRequest } from '../lib/ai/evaluate';
+import { parsePortableEvaluation, portableEvaluationPrompt } from '../lib/ai/portable';
 import type { AiEvaluation } from '../lib/db';
 import { setSetting, useSetting } from '../lib/settings';
+import { CopyBox, PasteBox } from './CopyPaste';
 import { Notice } from './ui';
 
-/** Explicit, opt-in AI second opinion. Nothing is sent until you press the button. */
+/**
+ * Explicit, opt-in AI second opinion. Subscription mode: copy a prompt into Claude and paste the
+ * reply back. API mode: one button, using your own key. Nothing is sent automatically.
+ */
 export function AiPanel({
   build,
   existing,
@@ -18,6 +23,7 @@ export function AiPanel({
   selfScores: Record<string, number>;
   onResult: (ai: AiEvaluation) => Promise<void> | void;
 }) {
+  const mode = useSetting('aiMode');
   const apiKey = useSetting('apiKey');
   const acknowledged = useSetting('aiAcknowledged');
   const [busy, setBusy] = useState(false);
@@ -37,15 +43,42 @@ export function AiPanel({
   }
 
   if (existing) return <AiResult ai={existing} selfScores={selfScores} />;
+  if (mode === undefined) return null;
+
+  if (mode === 'subscription') {
+    const req = build();
+    if (!req.response.trim()) return null;
+    return (
+      <div className="space-y-3 rounded-xl border border-violet-200 p-3 dark:border-violet-900">
+        <h3 className="font-semibold">Second opinion from Claude (your subscription)</h3>
+        <ol className="muted list-decimal space-y-1 pl-5 text-xs">
+          <li>
+            Copy the prompt (it contains the exercise and your response — not your self-scores).
+          </li>
+          <li>
+            Paste it into Claude Code in your terminal (inside this repo, <code>/rewire-coach</code>{' '}
+            helps), claude.ai or the Claude app.
+          </li>
+          <li>Paste Claude’s whole reply below.</li>
+        </ol>
+        <CopyBox text={portableEvaluationPrompt(req)} label="Copy prompt for Claude" />
+        <PasteBox
+          label="Claude’s reply"
+          button="Save Claude’s rating"
+          onSubmit={async (text) => onResult(parsePortableEvaluation(text, req.rubric))}
+        />
+      </div>
+    );
+  }
 
   if (!apiKey)
     return (
       <Notice>
-        Want an independent second opinion? Add your Anthropic API key in{' '}
+        API mode needs your Anthropic API key — add it in{' '}
         <Link className="underline" to="/settings">
           Settings
         </Link>
-        .
+        , or switch to Claude subscription mode there.
       </Notice>
     );
 

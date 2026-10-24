@@ -257,7 +257,8 @@ export const SETUP_TASKS: SetupTask[] = [
   {
     id: 'doctor',
     title: 'Doctor visit + blood tests',
-    detail: 'Ask about CBC, ferritin, B12, vitamin D, TSH, HbA1c; mention any snoring.',
+    detail:
+      'Done in the last 3 months? Tick it and follow up anything abnormal. Otherwise ask about CBC, ferritin, B12, vitamin D, TSH, HbA1c; mention any snoring.',
     route: '/handbook/modules/L0-brain-clarity.md',
     byWeek: 2,
   },

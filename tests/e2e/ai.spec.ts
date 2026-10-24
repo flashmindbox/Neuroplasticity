@@ -1,5 +1,5 @@
-// Exercises the real browser AI path (SDK in the browser, CSP, streaming) against a mocked
-// Anthropic endpoint — no real API calls or keys.
+// API-key mode: exercises the real browser AI path (SDK in the browser, CSP, streaming) against a
+// mocked Anthropic endpoint — no real API calls or keys.
 import { expect, test, type Page } from '@playwright/test';
 
 const USAGE = { input_tokens: 900, output_tokens: 400 };
@@ -47,6 +47,7 @@ function sse(text: string) {
 
 async function addKey(page: Page) {
   await page.goto('/#/settings');
+  await page.getByRole('button', { name: /Anthropic API key/ }).click();
   await page.getByPlaceholder('sk-ant-…').fill('sk-ant-test-key');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Remove key')).toBeVisible();
@@ -82,6 +83,7 @@ test('drill evaluation through the browser SDK', async ({ page }) => {
   await page
     .getByLabel('Your response')
     .fill('Social: inclusion\nEconomic: fiscal cost\nPolitical: federal tension');
+  await expect(page.getByRole('radiogroup').first()).toBeVisible();
   for (const group of await page.getByRole('radiogroup').all())
     await group.getByRole('radio', { name: '4' }).click();
   await page.getByRole('button', { name: 'Save drill' }).click();
@@ -139,6 +141,7 @@ test('AI errors are shown, not swallowed', async ({ page }) => {
   await page.goto('/#/drills');
   await page.getByRole('button', { name: '1-minute structure' }).click();
   await page.getByLabel('Your response').fill('Intro / Body / Way forward');
+  await expect(page.getByRole('radiogroup').first()).toBeVisible();
   for (const group of await page.getByRole('radiogroup').all())
     await group.getByRole('radio', { name: '3' }).click();
   await page.getByRole('button', { name: 'Save drill' }).click();

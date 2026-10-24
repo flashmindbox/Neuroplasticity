@@ -11,7 +11,7 @@ export default function Settings() {
   return (
     <Page title="Settings" subtitle="Everything is stored only on this device.">
       <DatesCard />
-      <ApiKeyCard />
+      <AiModeCard />
       <BackupCard />
       <Card title="About">
         <p className="text-sm">
@@ -83,6 +83,60 @@ function DatesForm({ initial }: { initial: ExamDates }) {
   );
 }
 
+function AiModeCard() {
+  const mode = useSetting('aiMode');
+  if (mode === undefined) return null;
+  return (
+    <Card title="AI second opinion">
+      <div className="space-y-3 text-sm">
+        <p>
+          Drills, talks and the mock board can get an independent rating from Claude. Your journal
+          is never sent, and the AI never sees your self-scores.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              [
+                'subscription',
+                'Claude subscription (copy & paste)',
+                'Copy a prompt into Claude Code in your terminal, claude.ai or the Claude app; paste the reply back. No API key, no per-call cost.',
+              ],
+              [
+                'api',
+                'Anthropic API key',
+                'One button, answers inside the app. Pay-per-use on your own key (a few cents per rating).',
+              ],
+            ] as const
+          ).map(([id, title, detail]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={mode === id}
+              onClick={() => setSetting('aiMode', id)}
+              className={`rounded-xl border p-3 text-left transition ${
+                mode === id
+                  ? 'border-brand-700 bg-brand-50 dark:bg-brand-900/30'
+                  : 'border-slate-200 hover:border-slate-400 dark:border-slate-700'
+              }`}
+            >
+              <div className="font-semibold">{title}</div>
+              <div className="muted text-xs">{detail}</div>
+            </button>
+          ))}
+        </div>
+        {mode === 'subscription' && (
+          <p className="muted text-xs">
+            Tip: open Claude Code inside this repository — the <code>/rewire-coach</code> skill
+            knows the prompt formats and the handbook. What you paste into Claude is handled under
+            your Claude account’s settings.
+          </p>
+        )}
+      </div>
+      {mode === 'api' && <ApiKeyCard />}
+    </Card>
+  );
+}
+
 function ApiKeyCard() {
   const apiKey = useSetting('apiKey');
   const usage = useLiveQuery(() => db.aiUsage.toArray(), []);
@@ -93,12 +147,11 @@ function ApiKeyCard() {
   const total = (usage ?? []).reduce((s, u) => s + u.costUsd, 0);
 
   return (
-    <Card title="AI second opinion (optional)">
+    <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800">
       <div className="space-y-3 text-sm">
         <p>
-          Drills, talks and the mock board can be rated by Claude (model{' '}
-          <code>claude-opus-5-5</code>) using <strong>your own</strong> Anthropic API key. Calls
-          happen only when you press an AI button. Your journal is never sent.
+          Model <code>claude-opus-5-5</code> with <strong>your own</strong> Anthropic API key. Calls
+          happen only when you press an AI button.
         </p>
         <ul className="muted list-disc space-y-1 pl-5 text-xs">
           <li>
@@ -157,7 +210,7 @@ function ApiKeyCard() {
           tokens).
         </p>
       </div>
-    </Card>
+    </div>
   );
 }
 

@@ -30,6 +30,8 @@ export interface SettingsMap {
   dates: ExamDates;
   charter: Charter | null;
   setupDone: Record<string, boolean>;
+  /** How AI second opinions run: copy/paste through your Claude subscription, or your own API key. */
+  aiMode: 'subscription' | 'api';
   apiKey: string;
   aiAcknowledged: boolean;
   lastBackupAt: string | null;
@@ -52,6 +54,7 @@ export function defaultSettings(today: DateKey = todayKey()): SettingsMap {
     dates: { programmeStart: today, ...DEFAULT_EXAM_DATES },
     charter: null,
     setupDone: {},
+    aiMode: 'subscription',
     apiKey: '',
     aiAcknowledged: false,
     lastBackupAt: null,

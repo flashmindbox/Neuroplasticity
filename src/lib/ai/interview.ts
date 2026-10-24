@@ -104,7 +104,7 @@ export async function boardTurn(
 
 export const INTERVIEW_ENDED = /that will be all/i;
 
-const DebriefSchema = z.object({
+export const DebriefSchema = z.object({
   scores: z
     .array(
       z.object({
@@ -118,7 +118,7 @@ const DebriefSchema = z.object({
   summary: z.string().describe('3–4 sentences: overall impression as a board would record it'),
 });
 
-const DEBRIEF_SYSTEM = `You are an experienced UPSC Personality Test board member writing a candid practice debrief. Score each criterion 1–5 (1 = poor, 3 = acceptable, 5 = outstanding; most practice interviews deserve 2–4). Base every judgement on specific answers in the transcript. Be honest and constructive; do not inflate.`;
+export const DEBRIEF_SYSTEM = `You are an experienced UPSC Personality Test board member writing a candid practice debrief. Score each criterion 1–5 (1 = poor, 3 = acceptable, 5 = outstanding; most practice interviews deserve 2–4). Base every judgement on specific answers in the transcript. Be honest and constructive; do not inflate.`;
 
 export function transcriptText(messages: InterviewMessage[]): string {
   return messages
@@ -157,18 +157,24 @@ export async function boardDebrief(
     assertUsable(res.stop_reason);
     const out = res.parsed_output;
     if (!out) throw new AiError('invalid-output', 'The debrief could not be read. Try again.');
-    const scores: Record<string, number> = {};
-    for (const c of BOARD_CRITERIA) {
-      const hit = out.scores.find((s) => s.criterion.trim().toLowerCase() === c.toLowerCase());
-      if (hit) scores[c] = Math.min(5, Math.max(1, Math.round(hit.score)));
-    }
-    return {
-      scores,
-      strengths: out.strengths,
-      improvements: out.improvements,
-      summary: out.summary,
-    };
+    return normaliseDebrief(out);
   } catch (err) {
     throw toAiError(err);
   }
+}
+
+export function normaliseDebrief(out: z.infer<typeof DebriefSchema>): InterviewDebrief {
+  const scores: Record<string, number> = {};
+  for (const c of BOARD_CRITERIA) {
+    const hit = out.scores.find((s) => s.criterion.trim().toLowerCase() === c.toLowerCase());
+    if (hit) scores[c] = Math.min(5, Math.max(1, Math.round(hit.score)));
+  }
+  if (Object.keys(scores).length === 0)
+    throw new AiError('invalid-output', 'The debrief did not include the board criteria.');
+  return {
+    scores,
+    strengths: out.strengths,
+    improvements: out.improvements,
+    summary: out.summary,
+  };
 }

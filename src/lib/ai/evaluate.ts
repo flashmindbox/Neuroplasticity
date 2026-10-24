@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { AiEvaluation } from '../db';
 import { AiError, assertUsable, FALLBACK_BETA, MODEL, recordUsage, toAiError } from './client';
 
-const EvaluationSchema = z.object({
+export const EvaluationSchema = z.object({
   scores: z
     .array(
       z.object({
@@ -26,7 +26,7 @@ const EvaluationSchema = z.object({
 
 export type EvaluationOutput = z.infer<typeof EvaluationSchema>;
 
-const SYSTEM = `You are a strict, fair evaluator in a training programme for a UPSC Civil Services aspirant. The programme trains thinking, judgement, expression and communication — not syllabus recall.
+export const EVALUATOR_SYSTEM = `You are a strict, fair evaluator in a training programme for a UPSC Civil Services aspirant. The programme trains thinking, judgement, expression and communication — not syllabus recall.
 
 Score each rubric criterion from 1 to 5 using these anchors:
 1 = absent; 2 = weak or generic; 3 = adequate; 4 = strong and specific; 5 = topper-grade, rare.
@@ -106,7 +106,7 @@ export async function evaluate(client: ParseClient, req: EvaluationRequest): Pro
       output_config: { effort: 'high', format: betaZodOutputFormat(EvaluationSchema) },
       betas: [FALLBACK_BETA],
       fallbacks: 'default',
-      system: SYSTEM,
+      system: EVALUATOR_SYSTEM,
       messages: [{ role: 'user', content: buildUserMessage(req) }],
     });
     await recordUsage(`${req.kind}-evaluation`, res.usage);

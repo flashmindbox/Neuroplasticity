@@ -18,7 +18,7 @@ periodisation — label it as such and check your data.
 
 ## Phase 0 — Diagnose & install (2 weeks)
 - Fill the **Personal Charter**: purpose statement, Plan B, support contacts, your 2–3 active targets.
-- **Doctor visit + blood tests** — see [Brain clarity](modules/L0-brain-clarity.md).
+- **Doctor visit + blood tests** (or results from the last ~3 months) — see [Brain clarity](modules/L0-brain-clarity.md).
 - **Baseline tests** — [Assessments](assessments/baseline-and-monthly.md): Brain Check, focus test, recorded talk, thinking drill, PHQ-9/GAD-7, 13-dimension self-rating.
 - **Fog audit** — your first personal experiment (14 days of clarity ratings).
 - **Keystone habits** — fixed wake time, morning light + movement, phone out of the study room, nightly 5-minute journal.

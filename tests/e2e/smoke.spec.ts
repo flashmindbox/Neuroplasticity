@@ -96,6 +96,7 @@ test('core daily loop persists across reloads', async ({ page }) => {
   // Monthly rating → radar.
   await page.goto('/#/review');
   await page.getByRole('tab', { name: 'Monthly rating' }).click();
+  await expect(page.getByRole('radiogroup')).toHaveCount(13);
   for (const group of await page.getByRole('radiogroup').all()) {
     await group.getByRole('radio', { name: '5' }).click();
   }

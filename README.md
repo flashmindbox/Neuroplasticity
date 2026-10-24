@@ -11,7 +11,8 @@ integrity, and exam-day performance.
 
 1. Read the handbook: [`handbook/README.md`](handbook/README.md) (also readable inside the app).
 2. Open the app, write your **Personal Charter**, and follow **Today**.
-3. Week 1: doctor visit + baseline tests ([Brain clarity](handbook/modules/L0-brain-clarity.md)).
+3. Week 1: baseline tests; doctor visit + blood tests unless you've had them in the last ~3 months
+   ([Brain clarity](handbook/modules/L0-brain-clarity.md)).
 
 If you are struggling: **Tele-MANAS 14416** (free, 24×7) · emergency **112**.
 
@@ -23,7 +24,8 @@ handbook/        The programme (Markdown) — foundations, roadmap, protocols, s
 src/             The companion app (React + TypeScript, installable PWA, local-first)
   content/       Dimensions, protocol, roadmap, screening items, drill parsing
   lib/           Storage (IndexedDB), phase/dose, calibration, decision rules, Brain Check, experiments, backup
-  lib/ai/        Optional Claude second opinion (drills, talks, mock interview board)
+  lib/ai/        Claude second opinion: copy/paste prompts for your subscription, or API-key mode
+.claude/skills/  rewire-coach — Claude Code skill for rating drills/talks and running the mock board
   pages/         Today, Focus, Drills, Journal, Speak, Mocks, Tests, Experiments, Review, Progress,
                  Mock board, Charter, Handbook, Settings
 tests/unit/      Vitest — logic, safety rules, AI layer (mocked), handbook integrity
@@ -49,17 +51,32 @@ menu → _Add to Home screen_. It works offline.
 - Live transcription on the Speak page uses your browser's speech service (in Chrome, Google processes the audio).
   You can turn it off and type the transcript instead.
 
-## Optional AI second opinion
+## AI second opinion with your Claude subscription
 
-Drills, recorded talks and the mock interview board can be rated by Claude (`claude-opus-5-5`) with **your own**
-Anthropic API key (Settings). Notes:
+Drills, recorded talks and the mock interview board can get an independent rating from Claude. By default this
+uses your **Claude subscription** — no API key:
 
-- Nothing is sent until you press an AI button. Your journal is never sent. The AI never sees your self-scores
-  (independent rating); the gap between your scores and its scores is tracked as a self-awareness measure.
-- The key is stored only in this browser. Create a dedicated key and set a monthly spend limit in the Anthropic Console.
-- Server-side refusal fallback is enabled: if the model declines a request, the API may retry it on a default
-  fallback model. Typical cost: a few cents per evaluation; well under a dollar per mock interview. The app shows a cost meter.
-- Safety screening (PHQ-9 / GAD-7) uses fixed rules and never depends on the AI.
+1. In the app, save a drill or talk and press **Copy prompt for Claude** (Mock board: **Copy board prompt**).
+2. In a terminal, open Claude Code inside this repository and paste it:
+
+   ```bash
+   cd Neuroplasticity
+   claude            # then type /rewire-coach and paste, or just paste
+   ```
+
+   The project skill `.claude/skills/rewire-coach/` knows the prompt formats, the scoring anchors and the
+   handbook. The same prompt also works in claude.ai or the Claude app.
+
+3. Paste Claude's whole reply into **Claude's reply** (or **Claude's debrief**) in the app. The app validates it
+   and stores the rating as an external opinion next to your self-scores.
+
+Notes:
+
+- The prompt contains the exercise and your response — never your journal or your self-scores (independent rating).
+- Safety screening (PHQ-9 / GAD-7) uses fixed rules in the app and never depends on the AI.
+- **API-key mode** is still available (Settings → AI second opinion → Anthropic API key): one button inside the
+  app, `claude-opus-5-5`, pay-per-use on your own key, with server-side refusal fallback and a cost meter. The key
+  stays in this browser only and is never included in backups.
 
 ## Develop
 

@@ -43,7 +43,12 @@ Common, often reversible causes:
 - Memory problems that affect basic daily functioning.
 
 ## Week-1 doctor visit
-Tell the doctor about the fog, your sleep, diet (vegetarian?), caffeine and any snoring. Tests to **ask about**
+**Already had a check-up and blood tests in the last ~3 months?** Use those results — no need to repeat them.
+Make sure any abnormal value (low B12, vitamin D, ferritin or haemoglobin; thyroid; blood sugar) has a treatment
+plan from your doctor. If everything was normal, that is useful information: the most likely causes of fog move
+to sleep, stress, mood and lifestyle — exactly what the fog audit below tests.
+
+Otherwise, tell the doctor about the fog, your sleep, diet (vegetarian?), caffeine and any snoring. Tests to **ask about**
 (the doctor decides what is appropriate):
 - Complete blood count (anaemia) and **ferritin** (iron stores)
 - **Vitamin B12**

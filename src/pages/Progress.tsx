@@ -44,6 +44,7 @@ export default function Progress() {
   const drills = useLiveQuery(() => db.drills.toArray(), []);
   const talks = useLiveQuery(() => db.talks.toArray(), []);
   const usage = useLiveQuery(() => db.aiUsage.toArray(), []);
+  const interviews = useLiveQuery(() => db.interviews.count(), []);
 
   const weekly = useMemo(() => {
     if (!prog || !logs || !sessions || !mocks) return [];
@@ -199,11 +200,15 @@ export default function Progress() {
       <div className="grid grid-cols-2 gap-2">
         <Stat label="Drills done" value={drills.length} />
         <Stat label="Talks recorded" value={talks.length} />
-        <Stat label="AI cost this month" value={`$${monthCost.toFixed(2)}`} />
         <Stat
-          label="AI calls this month"
-          value={usage.filter((u) => u.date.startsWith(month)).length}
+          label="AI ratings"
+          value={drills.filter((d) => d.ai).length + talks.filter((t) => t.ai).length}
         />
+        {usage.length > 0 ? (
+          <Stat label="API cost this month" value={`$${monthCost.toFixed(2)}`} />
+        ) : (
+          <Stat label="Mock boards" value={interviews ?? 0} />
+        )}
       </div>
     </Page>
   );

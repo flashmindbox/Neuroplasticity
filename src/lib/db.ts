@@ -196,6 +196,8 @@ export interface InterviewSession {
   system: string;
   messages: InterviewMessage[];
   debrief?: InterviewDebrief;
+  /** 'subscription' = run in Claude (terminal/app) and imported here. */
+  source?: 'api' | 'subscription';
 }
 
 export interface AiUsage {
