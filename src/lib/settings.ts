@@ -3,6 +3,7 @@ import type { DimensionId } from '../content/dimensions';
 import { DEFAULT_EXAM_DATES, type ExamDates } from '../content/roadmap';
 import { db } from './db';
 import { todayKey, type DateKey } from './dates';
+import { fogAuditExperiment } from './experiments';
 
 export interface Charter {
   purpose: string;
@@ -33,6 +34,7 @@ export interface SettingsMap {
   aiAcknowledged: boolean;
   lastBackupAt: string | null;
   weeklyDone: Record<string, Record<string, boolean>>;
+  writingSpeed: { date: DateKey; wpm: number }[];
 }
 
 export const EMPTY_PROFILE: InterviewProfile = {
@@ -54,6 +56,7 @@ export function defaultSettings(today: DateKey = todayKey()): SettingsMap {
     aiAcknowledged: false,
     lastBackupAt: null,
     weeklyDone: {},
+    writingSpeed: [],
   };
 }
 
@@ -66,11 +69,16 @@ export async function setSetting<K extends keyof SettingsMap>(key: K, value: Set
   await db.settings.put({ key, value });
 }
 
-/** Persist the programme start date the first time the app opens. */
+/** First launch: fix the programme start date and set up the fog audit as experiment #1. */
 export async function ensureInitialised() {
-  if (!(await db.settings.get('dates'))) {
-    await setSetting('dates', defaultSettings().dates);
-  }
+  await db.transaction('rw', db.settings, db.experiments, async () => {
+    if (await db.settings.get('dates')) return;
+    const dates = defaultSettings().dates;
+    await setSetting('dates', dates);
+    if ((await db.experiments.count()) === 0) {
+      await db.experiments.add(fogAuditExperiment(dates.programmeStart));
+    }
+  });
 }
 
 export function useSetting<K extends keyof SettingsMap>(key: K): SettingsMap[K] | undefined {

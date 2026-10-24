@@ -1,4 +1,5 @@
-import type { DailyLog, FocusSession, MockEntry } from './db';
+import type { DimensionId } from '../content/dimensions';
+import type { DailyLog, DrillEntry, FocusSession, MockEntry, TalkEntry } from './db';
 import { addDays, rangeKeys, type DateKey } from './dates';
 import { mean, pearson, round } from './stats';
 import { completionRatio } from './streak';
@@ -76,4 +77,39 @@ export function fogAudit(logs: DailyLog[]): FogFactor[] {
     const r = pairs.length >= 7 ? pearson(pairs) : null;
     return { id, label, r: r == null ? null : round(r, 2), n: pairs.length };
   });
+}
+
+const DRILL_DIMENSION: Record<string, DimensionId> = {
+  lenses: 'thinking',
+  steelman: 'thinking',
+  causal: 'thinking',
+  dm: 'thinking',
+  structure: 'expression',
+  dilemma: 'integrity',
+};
+
+/**
+ * External (AI) ratings mapped onto the 1–10 dimension scale: the mean AI rubric score (1–5) × 2,
+ * over drills and talks since `since`.
+ */
+export function aiDerivedRatings(
+  drills: DrillEntry[],
+  talks: TalkEntry[],
+  since: DateKey,
+): Partial<Record<DimensionId, number>> {
+  const buckets: Partial<Record<DimensionId, number[]>> = {};
+  const add = (dim: DimensionId, scores: Record<string, number>) => {
+    const v = Object.values(scores);
+    if (v.length) (buckets[dim] ??= []).push(v.reduce((a, b) => a + b, 0) / v.length);
+  };
+  for (const d of drills) {
+    const dim = DRILL_DIMENSION[d.type];
+    if (d.ai && dim && d.date >= since) add(dim, d.ai.scores);
+  }
+  for (const t of talks) if (t.ai && t.date >= since) add('communication', t.ai.scores);
+  const out: Partial<Record<DimensionId, number>> = {};
+  for (const [dim, xs] of Object.entries(buckets) as [DimensionId, number[]][]) {
+    out[dim] = round((mean(xs) ?? 0) * 2, 1);
+  }
+  return out;
 }

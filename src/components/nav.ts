@@ -1,0 +1,16 @@
+export const NAV = [
+  { to: '/', label: 'Today', icon: '☀️', primary: true },
+  { to: '/focus', label: 'Focus', icon: '🎯', primary: true },
+  { to: '/drills', label: 'Drills', icon: '🧠', primary: true },
+  { to: '/journal', label: 'Journal', icon: '📓', primary: true },
+  { to: '/speak', label: 'Speak', icon: '🎙️' },
+  { to: '/mocks', label: 'Mocks', icon: '📝' },
+  { to: '/tests', label: 'Tests', icon: '🧪' },
+  { to: '/experiments', label: 'Experiments', icon: '🔬' },
+  { to: '/review', label: 'Review', icon: '🗓️' },
+  { to: '/progress', label: 'Progress', icon: '📈' },
+  { to: '/interview', label: 'Mock board', icon: '🪑' },
+  { to: '/charter', label: 'Charter', icon: '🧭' },
+  { to: '/handbook', label: 'Handbook', icon: '📖' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
+];

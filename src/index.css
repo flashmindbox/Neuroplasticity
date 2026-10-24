@@ -68,3 +68,42 @@
 @utility chip {
   @apply inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium dark:border-slate-700;
 }
+
+/* Handbook typography */
+.prose-rewire {
+  @apply space-y-3 text-[15px] leading-relaxed text-slate-800 dark:text-slate-200;
+}
+.prose-rewire h1 {
+  @apply mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white;
+}
+.prose-rewire h2 {
+  @apply mt-6 border-t border-slate-200 pt-4 text-xl font-semibold text-slate-900 dark:border-slate-800 dark:text-white;
+}
+.prose-rewire h3 {
+  @apply mt-4 text-base font-semibold text-slate-900 dark:text-white;
+}
+.prose-rewire a {
+  @apply font-medium text-brand-700 underline underline-offset-2 dark:text-brand-200;
+}
+.prose-rewire ul {
+  @apply list-disc space-y-1 pl-5;
+}
+.prose-rewire ol {
+  @apply list-decimal space-y-1 pl-5;
+}
+.prose-rewire blockquote {
+  @apply rounded-r-xl border-l-4 border-brand-500 bg-brand-50 px-4 py-2 dark:bg-brand-900/30;
+}
+.prose-rewire code {
+  @apply rounded bg-slate-100 px-1 py-0.5 text-[13px] dark:bg-slate-800;
+}
+.prose-rewire table {
+  @apply w-full border-collapse text-sm;
+}
+.prose-rewire th,
+.prose-rewire td {
+  @apply border border-slate-200 px-2 py-1.5 text-left align-top dark:border-slate-700;
+}
+.prose-rewire th {
+  @apply bg-slate-50 font-semibold dark:bg-slate-800;
+}
