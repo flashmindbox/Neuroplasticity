@@ -9,10 +9,19 @@ integrity, and exam-day performance.
 
 ## Start here
 
-1. Read the handbook: [`handbook/README.md`](handbook/README.md) (also readable inside the app).
-2. Open the app, write your **Personal Charter**, and follow **Today**.
-3. Week 1: baseline tests; doctor visit + blood tests unless you've had them in the last ~3 months
-   ([Brain clarity](handbook/modules/L0-brain-clarity.md)).
+1. Open the app. A 2-minute welcome asks for your purpose and what to train first.
+2. Follow **Today**. It works like a mentor:
+   - **Morning check-in** — four taps (sleep, energy, stress, mood). It sizes the day: full, light or a 5-minute
+     minimum day, and tells you why.
+   - **One next step at a time** — attention training, a focus block, a drill, a talk, the journal — with a big
+     button that opens the right tool. The plan ticks itself when you finish something in the app.
+   - **Feedback straight after** each session ("your longest block yet", "3.4 fillers per minute — down from your
+     earlier average of 6.1").
+   - **Close the day** in one minute; on Sundays the Review page has your mentor's note on the week.
+   - **Your progress** — what has changed since your first week, milestones, and what to expect when.
+3. Week 1: the setup missions on Today walk you through baseline tests and a doctor visit + blood tests unless
+   you've had them in the last ~3 months ([Brain clarity](handbook/modules/L0-brain-clarity.md)).
+4. The handbook explains the why: [`handbook/README.md`](handbook/README.md) (also readable inside the app).
 
 If you are struggling: **Tele-MANAS 14416** (free, 24×7) · emergency **112**.
 
@@ -23,7 +32,8 @@ handbook/        The programme (Markdown) — foundations, roadmap, protocols, s
                  assessments, drill banks, references. The app renders it and reads the drill banks from it.
 src/             The companion app (React + TypeScript, installable PWA, local-first)
   content/       Dimensions, protocol, roadmap, screening items, drill parsing
-  lib/           Storage (IndexedDB), phase/dose, calibration, decision rules, Brain Check, experiments, backup
+  lib/           Storage (IndexedDB), phase/dose, calibration, decision rules, Brain Check, experiments, backup,
+                 mentor (check-in → day size, next step, feedback, progress, weekly note — deterministic, offline)
   lib/ai/        Claude second opinion: copy/paste prompts for your subscription, or API-key mode
 .claude/skills/  rewire-coach — Claude Code skill for rating drills/talks and running the mock board
   pages/         Today, Focus, Drills, Journal, Speak, Mocks, Tests, Experiments, Review, Progress,
@@ -53,10 +63,12 @@ menu → _Add to Home screen_. It works offline.
 
 ## AI second opinion with your Claude subscription
 
-Drills, recorded talks and the mock interview board can get an independent rating from Claude. By default this
-uses your **Claude subscription** — no API key:
+Drills, recorded talks and the mock interview board can get an independent rating from Claude, and the Sunday
+review can become a conversation with Claude as your mentor. By default this uses your **Claude subscription** —
+no API key:
 
-1. In the app, save a drill or talk and press **Copy prompt for Claude** (Mock board: **Copy board prompt**).
+1. In the app, save a drill or talk and press **Copy prompt for Claude** (Mock board: **Copy board prompt**;
+   Review: **Copy mentor-review prompt**).
 2. In a terminal, open Claude Code inside this repository and paste it:
 
    ```bash
@@ -68,11 +80,15 @@ uses your **Claude subscription** — no API key:
    handbook. The same prompt also works in claude.ai or the Claude app.
 
 3. Paste Claude's whole reply into **Claude's reply** (or **Claude's debrief**) in the app. The app validates it
-   and stores the rating as an external opinion next to your self-scores.
+   and stores the rating as an external opinion next to your self-scores. (The mentor review is read in Claude;
+   nothing is pasted back.)
 
 Notes:
 
 - The prompt contains the exercise and your response — never your journal or your self-scores (independent rating).
+  The mentor-review prompt contains your weekly numbers and Sunday-review answers — never your journal.
+- The everyday mentor on Today (check-in, next step, feedback, progress, weekly note) is fixed logic in the app and
+  works offline; it never needs the AI.
 - Safety screening (PHQ-9 / GAD-7) uses fixed rules in the app and never depends on the AI.
 - **API-key mode** is still available (Settings → AI second opinion → Anthropic API key): one button inside the
   app, `claude-opus-5-5`, pay-per-use on your own key, with server-side refusal fallback and a cost meter. The key

@@ -3,22 +3,12 @@ import { CLUSTERS, DIMENSIONS, MAX_ACTIVE_TARGETS, type DimensionId } from '../c
 import { Card, Field, HandbookLink, Notice, Page, SavedFlash, TextArea } from '../components/ui';
 import { todayKey } from '../lib/dates';
 import {
-  EMPTY_PROFILE,
+  EMPTY_CHARTER,
   setSetting,
   useSetting,
   type Charter as CharterT,
   type InterviewProfile,
 } from '../lib/settings';
-
-const EMPTY: CharterT = {
-  purpose: '',
-  values: '',
-  planB: '',
-  supportContacts: 'Tele-MANAS: 14416 (free, 24×7)\n',
-  targets: [],
-  profile: EMPTY_PROFILE,
-  updatedAt: '',
-};
 
 export default function Charter() {
   const saved = useSetting('charter');
@@ -26,7 +16,7 @@ export default function Charter() {
 }
 
 function CharterForm({ saved }: { saved: CharterT | null }) {
-  const [c, setC] = useState<CharterT>(() => saved ?? EMPTY);
+  const [c, setC] = useState<CharterT>(() => saved ?? EMPTY_CHARTER);
   const [flash, setFlash] = useState(false);
 
   const update = (patch: Partial<CharterT>) => setC({ ...c, ...patch });

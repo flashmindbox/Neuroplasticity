@@ -28,6 +28,9 @@ export const SLOT_LABELS: Record<Slot, string> = {
   evening: 'Evening',
 };
 
+/** Items a light day leaves out (handbook/02-daily-protocol.md: the dose shrinks, the habit stays). */
+export const LIGHT_SKIP_IDS = ['drill', 'talk'];
+
 export const MVD_ITEMS: ProtocolItem[] = [
   {
     id: 'mvd-breath',
@@ -35,7 +38,7 @@ export const MVD_ITEMS: ProtocolItem[] = [
     detail: 'A few slow cyclic sighs.',
     minutes: 1,
     slot: 'morning',
-    route: '/focus',
+    route: '/focus?tab=breathe',
   },
   {
     id: 'mvd-journal',
@@ -51,6 +54,7 @@ export const MVD_ITEMS: ProtocolItem[] = [
     detail: 'E.g., a single 10-minute focus block.',
     minutes: 3,
     slot: 'study',
+    route: '/focus',
   },
 ];
 
@@ -97,7 +101,7 @@ export function dailyProtocol(date: DateKey, state: PhaseState): ProtocolItem[] 
       detail: 'Notice the wander, return to the breath. Each return is one repetition.',
       minutes: att,
       slot: 'morning',
-      route: '/focus',
+      route: '/focus?tab=attention',
     },
     {
       id: 'vision',
@@ -166,9 +170,9 @@ export function dailyProtocol(date: DateKey, state: PhaseState): ProtocolItem[] 
     },
     {
       id: 'quicklog',
-      title: 'Quick log',
-      detail: 'Sleep, exercise, stress, mood, clarity — under 3 minutes.',
-      minutes: 3,
+      title: 'Close the day',
+      detail: 'Exercise, clarity and habits — about a minute.',
+      minutes: 1,
       slot: 'evening',
     },
     {

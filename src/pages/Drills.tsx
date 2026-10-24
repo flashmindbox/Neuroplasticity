@@ -1,6 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AiPanel, AiResult } from '../components/AiPanel';
+import { MentorFeedback } from '../components/mentor';
 import { Card, Empty, Field, HandbookLink, Notice, Page, Scale, TextArea } from '../components/ui';
 import {
   CALIBRATION_STATEMENTS,
@@ -12,12 +14,16 @@ import {
 } from '../content/drills';
 import { db, type DrillEntry } from '../lib/db';
 import { dayOfWeek } from '../lib/dates';
-import { useProgramme } from '../lib/hooks';
+import { recordActivity, useProgramme } from '../lib/hooks';
+import { drillFeedback } from '../lib/mentor';
 import { formatClock, useTimer } from '../lib/useTimer';
 
 export default function Drills() {
   const prog = useProgramme();
-  const [type, setType] = useState<DrillTypeId | null>(null);
+  // Deep links from the mentor, e.g. #/drills?type=structure.
+  const [params] = useSearchParams();
+  const asked = params.get('type') as DrillTypeId | null;
+  const [type, setType] = useState<DrillTypeId | null>(asked && DRILL_BY_ID[asked] ? asked : null);
   if (!prog) return null;
   const active = type ?? drillTypeForDay(dayOfWeek(prog.today));
 
@@ -60,26 +66,32 @@ function DrillRunner({ type, date }: { type: Exclude<DrillTypeId, 'calibration'>
   const [response, setResponse] = useState('');
   const [scores, setScores] = useState<Record<string, number>>({});
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<string[]>([]);
   const timer = useTimer(def.seconds);
   const saved = useLiveQuery(() => (savedId ? db.drills.get(savedId) : undefined), [savedId]);
   const allScored = def.rubric.every((c) => scores[c]);
 
   async function save() {
     timer.pause();
-    const id = await db.drills.add({
+    const earlier = await db.drills.toArray();
+    const entry: DrillEntry = {
       date,
       type,
       prompt,
       response,
       durationSec: timer.elapsedSec,
       selfScores: scores,
-    });
+    };
+    const id = await db.drills.add(entry);
+    await recordActivity(date, `drill:${type}`);
+    setFeedback(drillFeedback(entry, earlier));
     setSavedId(id as number);
   }
 
   function reset() {
     setResponse('');
     setScores({});
+    setFeedback([]);
     setSavedId(null);
     setSalt((s) => s + 1);
     setCustom('');
@@ -156,9 +168,9 @@ function DrillRunner({ type, date }: { type: Exclude<DrillTypeId, 'calibration'>
       ) : (
         saved && (
           <div className="space-y-3">
-            <Notice tone="success">
-              Saved · {formatClock(saved.durationSec)} · your average {avg(saved.selfScores)}/5
-            </Notice>
+            <MentorFeedback
+              lines={[`Saved · ${formatClock(saved.durationSec)} on the clock.`, ...feedback]}
+            />
             <AiPanel
               existing={saved.ai}
               selfScores={saved.selfScores}
@@ -235,6 +247,7 @@ function CalibrationQuiz({ date }: { date: string }) {
       selfScores: {},
       calibration: results,
     });
+    await recordActivity(date, 'drill:calibration');
   }
 
   return (

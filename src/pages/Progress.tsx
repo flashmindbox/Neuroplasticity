@@ -17,11 +17,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import { DIMENSIONS } from '../content/dimensions';
+import { HighlightRow, LockedRow, MilestoneRow } from '../components/mentor';
 import { Card, Empty, Page, Stat } from '../components/ui';
 import { db, type DailyLog } from '../lib/db';
-import { addDays, formatKey, weekStart, type DateKey } from '../lib/dates';
-import { plannedIds, useProgramme } from '../lib/hooks';
+import { addDays, daysBetween, formatKey, weekStart, type DateKey } from '../lib/dates';
+import { plannedIds, useProgramme, useProgressData, type ProgressData } from '../lib/hooks';
+import { expectation, milestones, progressHighlights } from '../lib/mentor';
 import { aiDerivedRatings, weekMetrics } from '../lib/metrics';
 import { useSetting } from '../lib/settings';
 
@@ -30,6 +33,8 @@ const WEEKS = 12;
 export default function Progress() {
   const prog = useProgramme();
   const charter = useSetting('charter');
+  const targets = useMemo(() => charter?.targets ?? [], [charter]);
+  const data = useProgressData(prog, targets);
   const since = prog ? addDays(weekStart(prog.today), -7 * (WEEKS - 1)) : '';
   const logs = useLiveQuery(
     () => (since ? db.dailyLogs.where('date').aboveOrEqual(since).toArray() : []),
@@ -64,7 +69,7 @@ export default function Progress() {
     }).filter((x): x is NonNullable<typeof x> => x !== null);
   }, [prog, logs, sessions, mocks, charter]);
 
-  if (!prog || !ratings || !drills || !talks || !usage) return null;
+  if (!prog || !ratings || !drills || !talks || !usage || !data) return null;
 
   const self = [...ratings].reverse().find((r) => r.source === 'self');
   const external = [...ratings].reverse().find((r) => r.source === 'external');
@@ -89,12 +94,23 @@ export default function Progress() {
 
   return (
     <Page title="Progress" subtitle="Judge 4-week trends, not single days.">
+      <Changing data={data} dayNumber={daysBetween(prog.dates.programmeStart, prog.today) + 1} />
+      <Milestones data={data} />
+
       <Card
         title="Topper profile"
         aside={self ? <span className="muted text-xs">self: {self.date}</span> : null}
       >
         {!self ? (
-          <Empty>Do your first monthly rating in Review to see the radar.</Empty>
+          <div className="space-y-3 py-2 text-center">
+            <p className="muted">
+              Once a month, rate yourself on the 13 dimensions (5 minutes). Your profile — and the
+              gap between your view and Claude’s or a mentor’s — appears here.
+            </p>
+            <Link to="/review" className="btn-secondary">
+              Do the monthly rating →
+            </Link>
+          </div>
         ) : (
           <>
             <div className="h-80">
@@ -211,5 +227,72 @@ export default function Progress() {
         )}
       </div>
     </Page>
+  );
+}
+
+function Changing({ data, dayNumber }: { data: ProgressData; dayNumber: number }) {
+  const { ready, locked } = useMemo(() => progressHighlights(data), [data]);
+  return (
+    <Card title="What’s changing">
+      <p className="muted mb-3 text-xs">{expectation(dayNumber)}</p>
+      {ready.length > 0 ? (
+        <ul className="space-y-3">
+          {ready.map((h) => (
+            <HighlightRow key={h.id} h={h} />
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm">
+          Nothing to compare yet — every result below unlocks as you practise.
+        </p>
+      )}
+      {locked.length > 0 && (
+        <>
+          <h3 className="mt-5 mb-2 text-sm font-semibold">Unlock next</h3>
+          <ul className="space-y-2">
+            {locked.map((l) => (
+              <LockedRow key={l.id} l={l} />
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function Milestones({ data }: { data: ProgressData }) {
+  const ms = useMemo(() => milestones(data), [data]);
+  const reached = ms.filter((m) => m.done);
+  const upcoming = ms
+    .filter((m) => !m.done)
+    .sort((a, b) => b.current / b.target - a.current / a.target)
+    .slice(0, 4);
+  return (
+    <Card
+      title="Milestones"
+      aside={
+        <span className="chip tabular-nums">
+          {reached.length}/{ms.length}
+        </span>
+      }
+    >
+      {reached.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {reached.map((m) => (
+            <span
+              key={m.id}
+              className="chip border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+            >
+              ✓ {m.title}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="space-y-3">
+        {upcoming.map((m) => (
+          <MilestoneRow key={m.id} m={m} />
+        ))}
+      </div>
+    </Card>
   );
 }

@@ -20,6 +20,17 @@ export interface DailyLog {
   caffeineGapHours?: number;
   screenHours?: number;
   note?: string;
+  /** Morning check-in answered (sleep, energy, stress, mood). */
+  checkedIn?: boolean;
+  /** Light day: shorter dose, drill and talk left out. `mvd` takes precedence. */
+  light?: boolean;
+  /** Why the mentor sized the day this way, shown back to you. */
+  planReason?: string;
+  ifThen?: string;
+  /** Steps you chose to leave for today; they stay unticked. */
+  skipped?: Record<string, boolean>;
+  /** Evening close-out done. */
+  closed?: boolean;
 }
 
 export type SessionKind = 'attention' | 'focus' | 'breath' | 'focustest';

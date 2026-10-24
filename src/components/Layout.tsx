@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { NAV } from './nav';
+import { NAV, NAV_GROUPS } from './nav';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
@@ -17,12 +17,19 @@ export default function Layout() {
           <img src="./icon.svg" alt="" className="h-8 w-8" />
           <span className="text-lg font-semibold">Rewire</span>
         </div>
-        <nav className="flex flex-col gap-0.5" aria-label="Main">
-          {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={linkClass}>
-              <span aria-hidden>{n.icon}</span>
-              {n.label}
-            </NavLink>
+        <nav className="flex flex-col gap-4" aria-label="Main">
+          {NAV_GROUPS.map((group) => (
+            <div key={group} className="flex flex-col gap-0.5">
+              <h2 className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
+                {group}
+              </h2>
+              {NAV.filter((n) => n.group === group).map((n) => (
+                <NavLink key={n.to} to={n.to} end={n.to === '/'} className={linkClass}>
+                  <span aria-hidden>{n.icon}</span>
+                  {n.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>

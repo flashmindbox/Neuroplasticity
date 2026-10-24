@@ -3,10 +3,12 @@ import {
   BOARD_HEADER,
   EVALUATION_HEADER,
   extractJson,
+  MENTOR_HEADER,
   parsePortableDebrief,
   parsePortableEvaluation,
   portableEvaluationPrompt,
   portableInterviewPrompt,
+  portableMentorPrompt,
   SUBSCRIPTION_MODEL,
 } from '../../src/lib/ai/portable';
 import { BOARD_CRITERIA, OPENING_MESSAGE } from '../../src/lib/ai/interview';
@@ -117,5 +119,43 @@ ${JSON.stringify({
       summary: 'ok',
     });
     expect(parsePortableDebrief(text).messages).toHaveLength(1);
+  });
+});
+
+describe('mentor review prompt', () => {
+  const metrics = {
+    habitPct: 72,
+    focusMinutes: 310,
+    attentionSessions: 5,
+    avgSleep: 6.4,
+    exerciseDays: 3,
+    avgStress: null,
+    avgClarity: 6.5,
+    mocks: 0,
+  };
+  const prompt = portableMentorPrompt({
+    phase: 'Phase 1 · Build',
+    programmeWeek: 6,
+    daysToPrelims: 180,
+    targets: ['Deep focus', 'Discipline & habits'],
+    weeks: [{ weekStart: '9 Nov', metrics }],
+    review: { worked: 'Morning blocks', change: '', lowestSource: 'Energy', nextWeek: '' },
+    note: {
+      headline: 'A solid week, with one thing to adjust.',
+      wins: ['Exercise on 4 days.'],
+      watch: ['Sleep averaged 6.4 h.'],
+      change: 'Fix one sleep lever.',
+    },
+  });
+
+  it('carries the numbers, the review and the safety line', () => {
+    expect(prompt.startsWith(MENTOR_HEADER)).toBe(true);
+    expect(prompt).toContain('plan done 72% · deep focus 310 min');
+    expect(prompt).toContain('stress –');
+    expect(prompt).toContain('- What worked: Morning blocks');
+    expect(prompt).toContain('- What I will change: (not filled in)');
+    expect(prompt).toContain('Active targets: Deep focus, Discipline & habits');
+    expect(prompt).toContain('- Watch: Sleep averaged 6.4 h.');
+    expect(prompt).toMatch(/14416/);
   });
 });

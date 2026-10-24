@@ -1,10 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AiPanel } from '../components/AiPanel';
+import { MentorFeedback } from '../components/mentor';
 import { Card, Empty, Field, HandbookLink, Notice, Page, Scale, TextArea } from '../components/ui';
 import { pickForDay, TALK_RUBRIC, TALK_TOPICS } from '../content/drills';
 import { db, type TalkEntry } from '../lib/db';
-import { toggleCheck, useProgramme } from '../lib/hooks';
+import { recordActivity, useProgramme } from '../lib/hooks';
+import { talkFeedback } from '../lib/mentor';
 import { countFillers, wordsPerMinute } from '../lib/talk';
 import { formatClock, useTimer } from '../lib/useTimer';
 
@@ -61,6 +63,7 @@ function Recorder({ date }: { date: string }) {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<string[]>([]);
   const saved = useLiveQuery(() => (savedId ? db.talks.get(savedId) : undefined), [savedId]);
   const audioUrl = useMemo(() => (audio ? URL.createObjectURL(audio) : null), [audio]);
   useEffect(() => () => void (audioUrl && URL.revokeObjectURL(audioUrl)), [audioUrl]);
@@ -154,7 +157,8 @@ function Recorder({ date }: { date: string }) {
   const allScored = TALK_RUBRIC.every((c) => scores[c]);
 
   async function save() {
-    const id = await db.talks.add({
+    const earlier = await db.talks.toArray();
+    const entry: TalkEntry = {
       date,
       prompt,
       audio,
@@ -163,8 +167,10 @@ function Recorder({ date }: { date: string }) {
       wpm,
       fillers,
       selfScores: scores,
-    });
-    await toggleCheck(date, 'talk', true);
+    };
+    const id = await db.talks.add(entry);
+    await recordActivity(date, 'talk');
+    setFeedback(talkFeedback(entry, earlier));
     setSavedId(id as number);
   }
 
@@ -305,7 +311,7 @@ function Recorder({ date }: { date: string }) {
       )}
       {saved && (
         <div className="space-y-3">
-          <Notice tone="success">Talk saved.</Notice>
+          <MentorFeedback lines={['Talk saved.', ...feedback]} />
           <AiPanel
             existing={saved.ai}
             selfScores={saved.selfScores}

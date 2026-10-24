@@ -31,7 +31,8 @@ working, and survives bad days, bad months and even a bad result. See [Failure m
 
 1. **Week 1:** read the Foundations, fill your **Personal Charter** in the app, book a doctor visit
    ([Brain clarity](modules/L0-brain-clarity.md)), and take the baseline tests ([Assessments](assessments/baseline-and-monthly.md)).
-2. **Every day:** follow the [Daily protocol](02-daily-protocol.md) — the app shows today's version.
+2. **Every day:** follow the [Daily protocol](02-daily-protocol.md) — the app's Today screen walks you through
+   it one step at a time, sized to how you are that morning.
 3. **Every week:** the [Sunday review](03-weekly-monthly-rituals.md). **Every month:** re-test, rate the 13 dimensions, review the programme itself.
 4. **Always:** keep only **2–3 active targets** at a time. More is not better — it backfires ([why](00-foundations/programme-rules.md)).
 

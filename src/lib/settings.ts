@@ -29,6 +29,8 @@ export interface InterviewProfile {
 export interface SettingsMap {
   dates: ExamDates;
   charter: Charter | null;
+  /** First-run welcome finished or skipped. */
+  onboarded: boolean;
   setupDone: Record<string, boolean>;
   /** How AI second opinions run: copy/paste through your Claude subscription, or your own API key. */
   aiMode: 'subscription' | 'api';
@@ -49,10 +51,21 @@ export const EMPTY_PROFILE: InterviewProfile = {
   optional: 'Political Science & International Relations',
 };
 
+export const EMPTY_CHARTER: Charter = {
+  purpose: '',
+  values: '',
+  planB: '',
+  supportContacts: 'Tele-MANAS: 14416 (free, 24×7)\n',
+  targets: [],
+  profile: EMPTY_PROFILE,
+  updatedAt: '',
+};
+
 export function defaultSettings(today: DateKey = todayKey()): SettingsMap {
   return {
     dates: { programmeStart: today, ...DEFAULT_EXAM_DATES },
     charter: null,
+    onboarded: false,
     setupDone: {},
     aiMode: 'subscription',
     apiKey: '',

@@ -5,6 +5,17 @@
 Record every change to the programme itself — what changed, why, and what evidence or feedback prompted it.
 Monthly retrospectives and expert reviews go here.
 
+## 0.3.0 — October 2026
+- The app now works like a **mentor**. A morning check-in (sleep, energy, stress, mood) sizes each day as full,
+  **light** (new: shorter attention practice, no drill or talk — see the [Daily protocol](02-daily-protocol.md))
+  or minimum. Today shows one next step at a time; practice done in the app ticks the plan by itself; a one-minute
+  *Close the day* replaces the quick-log form. Prompted by feedback that the app was hard to use and showed no
+  visible results.
+- Visible progress: comparisons with your first week (deep focus, attention reps, drill scores, fillers per minute,
+  sleep, stress, clarity), cumulative milestones, and honest expectations of when change usually shows.
+- Sunday review: an automatic mentor note (what went well, what to watch, the one change) and a mentor-review
+  prompt for your Claude subscription (`rewire-coach` mode 3).
+
 ## 0.2.0 — October 2026
 - AI second opinions now default to your **Claude subscription** (copy the prompt into Claude Code in the terminal,
   claude.ai or the Claude app; paste the reply back). The API-key mode remains as an option. Added the

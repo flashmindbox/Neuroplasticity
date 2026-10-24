@@ -82,3 +82,18 @@ test('mock board: copy the board prompt, import the debrief', async ({ page }) =
   await page.getByRole('button', { name: '← All interviews' }).click();
   await expect(page.getByText(/via Claude/)).toBeVisible();
 });
+
+test('Sunday review: the mentor’s note and a mentor-review prompt for Claude', async ({ page }) => {
+  await page.goto('/#/review');
+  await expect(page.getByText('Your mentor on this week')).toBeVisible();
+  await page.getByRole('button', { name: 'Use this as my change' }).click();
+  await expect(
+    page.getByLabel('What didn’t? The one specific change for next week.'),
+  ).not.toHaveValue('');
+  await page.getByLabel('What worked? One thing to keep.').fill('Morning focus blocks');
+  await page.getByRole('button', { name: 'Copy mentor-review prompt' }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('REWIRE · MENTOR REVIEW v1');
+  expect(copied).toContain('- What worked: Morning focus blocks');
+  expect(copied).toContain('14416');
+});

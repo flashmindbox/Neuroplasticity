@@ -21,7 +21,7 @@ import {
   type MockBuckets,
 } from '../lib/calibration';
 import { db, type MockKind } from '../lib/db';
-import { useProgramme } from '../lib/hooks';
+import { recordActivity, useProgramme } from '../lib/hooks';
 import { round } from '../lib/stats';
 
 const ADVICE_TEXT = {
@@ -177,6 +177,7 @@ function MockForm({ date }: { date: string }) {
       lastHalfQuality: lastHalf,
       notes,
     });
+    await recordActivity(d, 'mock');
     setBuckets(emptyBuckets());
     setSkipped(0);
     setName('');

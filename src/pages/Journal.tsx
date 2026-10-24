@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DIMENSIONS, DIMENSION_BY_ID, type DimensionId } from '../content/dimensions';
 import { EMOTION_GROUPS } from '../content/emotions';
+import { MentorFeedback } from '../components/mentor';
 import {
   Card,
   Empty,
@@ -14,13 +16,19 @@ import {
   TextArea,
 } from '../components/ui';
 import { db } from '../lib/db';
-import { toggleCheck, useProgramme } from '../lib/hooks';
+import { addDays } from '../lib/dates';
+import { recordActivity, useProgramme } from '../lib/hooks';
+import { journalFeedback } from '../lib/mentor';
 
 type Tab = 'tonight' | 'evidence' | 'woop' | 'stories' | 'dip';
+const TABS: Tab[] = ['tonight', 'evidence', 'woop', 'stories', 'dip'];
 
 export default function Journal() {
   const prog = useProgramme();
-  const [tab, setTab] = useState<Tab>('tonight');
+  // Deep links from the mentor, e.g. #/journal?tab=evidence.
+  const [params] = useSearchParams();
+  const asked = params.get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(asked && TABS.includes(asked) ? asked : 'tonight');
   if (!prog) return null;
   return (
     <Page title="Journal" subtitle="Name it, learn from it, plan it. Ten minutes a night.">
@@ -50,12 +58,21 @@ function Tonight({ date }: { date: string }) {
   const [lesson, setLesson] = useState('');
   const [ifThen, setIfThen] = useState('');
   const [gratitude, setGratitude] = useState('');
+  const [feedback, setFeedback] = useState<string[]>([]);
   const entries = useLiveQuery(() => db.journal.orderBy('id').reverse().limit(10).toArray(), []);
 
   async function save() {
     await db.journal.add({ date, win, emotions, lesson, ifThen, gratitude });
-    await toggleCheck(date, 'journal', true);
-    if (ifThen.trim()) await toggleCheck(date, 'ifthen', true);
+    await recordActivity(date, 'journal');
+    if (ifThen.trim()) await recordActivity(date, 'ifthen');
+    const recent = await db.journal.where('date').aboveOrEqual(addDays(date, -6)).toArray();
+    setFeedback(
+      journalFeedback({
+        count: await db.journal.count(),
+        ifThen: !!ifThen.trim(),
+        daysThisWeek: new Set(recent.map((e) => e.date)).size,
+      }),
+    );
     setWin('');
     setEmotions([]);
     setLesson('');
@@ -70,6 +87,7 @@ function Tonight({ date }: { date: string }) {
     <>
       <Card title="Tonight’s reflection">
         <div className="space-y-4">
+          <MentorFeedback lines={feedback} />
           <Field label="One win today (however small)">
             <input className="input" value={win} onChange={(e) => setWin(e.target.value)} />
           </Field>
@@ -181,6 +199,7 @@ function Evidence({ date }: { date: string }) {
             disabled={!text.trim()}
             onClick={async () => {
               await db.evidence.add({ date, dimension, text });
+              await recordActivity(date, 'evidence');
               setText('');
             }}
           >

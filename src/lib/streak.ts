@@ -1,5 +1,5 @@
 // Day completion and the "never miss twice" rule (handbook/00-foundations/programme-rules.md).
-import { MVD_ITEMS } from '../content/protocol';
+import { LIGHT_SKIP_IDS, MVD_ITEMS } from '../content/protocol';
 import { addDays, type DateKey } from './dates';
 import type { DailyLog } from './db';
 
@@ -8,18 +8,25 @@ export type DayStatus = 'done' | 'mvd' | 'missed';
 /** A day counts when at least half of its planned items are ticked, or the minimum viable day is complete. */
 export const DONE_THRESHOLD = 0.5;
 
+/** What a day actually asked of you: a light day leaves out the drill and the talk. */
+export function effectivePlan(log: DailyLog | undefined, plannedIds: string[]): string[] {
+  return log?.light ? plannedIds.filter((id) => !LIGHT_SKIP_IDS.includes(id)) : plannedIds;
+}
+
 export function dayStatus(log: DailyLog | undefined, plannedIds: string[]): DayStatus {
   if (!log) return 'missed';
   if (log.mvd && MVD_ITEMS.every((i) => log.checks[i.id])) return 'mvd';
-  if (plannedIds.length === 0) return 'missed';
-  const done = plannedIds.filter((id) => log.checks[id]).length;
-  return done / plannedIds.length >= DONE_THRESHOLD ? 'done' : 'missed';
+  const planned = effectivePlan(log, plannedIds);
+  if (planned.length === 0) return 'missed';
+  const done = planned.filter((id) => log.checks[id]).length;
+  return done / planned.length >= DONE_THRESHOLD ? 'done' : 'missed';
 }
 
 export function completionRatio(log: DailyLog | undefined, plannedIds: string[]): number {
   if (!log || plannedIds.length === 0) return 0;
   if (log.mvd) return MVD_ITEMS.filter((i) => log.checks[i.id]).length / MVD_ITEMS.length;
-  return plannedIds.filter((id) => log.checks[id]).length / plannedIds.length;
+  const planned = effectivePlan(log, plannedIds);
+  return planned.length ? planned.filter((id) => log.checks[id]).length / planned.length : 0;
 }
 
 export interface ChainInfo {

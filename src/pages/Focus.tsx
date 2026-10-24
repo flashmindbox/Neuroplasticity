@@ -1,22 +1,40 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { attentionMinutes, focusBlockMinutes } from '../content/protocol';
+import { MentorFeedback } from '../components/mentor';
 import { Card, Empty, Field, HandbookLink, Page, Scale, Stat, Tabs } from '../components/ui';
-import { db, type SessionKind } from '../lib/db';
-import { useProgramme } from '../lib/hooks';
+import { db, type FocusSession, type SessionKind } from '../lib/db';
+import { recordActivity, useProgramme } from '../lib/hooks';
+import {
+  attentionFeedback,
+  focusBlockFeedback,
+  lightAttentionMinutes,
+  type Activity,
+} from '../lib/mentor';
 import { bell } from '../lib/sound';
 import { formatClock, useTimer } from '../lib/useTimer';
 
 type Tab = 'attention' | 'block' | 'breathe' | 'test';
+const TABS: Tab[] = ['block', 'attention', 'breathe', 'test'];
 
 export default function Focus() {
   const prog = useProgramme();
-  const [tab, setTab] = useState<Tab>('block');
+  // Deep links from the mentor, e.g. #/focus?tab=attention.
+  const [params] = useSearchParams();
+  const asked = params.get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(asked && TABS.includes(asked) ? asked : 'block');
   const todays = useLiveQuery(
     () => (prog ? db.focusSessions.where('date').equals(prog.today).toArray() : []),
     [prog?.today],
   );
-  if (!prog) return null;
+  // Today's size from the check-in, so the timers match what the mentor asked for.
+  const day = useLiveQuery(
+    async () => (prog ? ((await db.dailyLogs.get(prog.today)) ?? null) : undefined),
+    [prog?.today],
+  );
+  if (!prog || day === undefined) return null;
+  const attention = attentionMinutes(prog.state);
   const focusMin = (todays ?? [])
     .filter((s) => s.kind === 'focus')
     .reduce((s, f) => s + f.actualMin, 0);
@@ -53,23 +71,38 @@ export default function Focus() {
         <FocusBlock date={prog.today} defaultMin={focusBlockMinutes(prog.state)} />
       )}
       {tab === 'attention' && (
-        <AttentionTraining date={prog.today} defaultMin={attentionMinutes(prog.state)} />
+        <AttentionTraining
+          date={prog.today}
+          defaultMin={day?.light ? lightAttentionMinutes(attention) : attention}
+        />
       )}
-      {tab === 'breathe' && <Breathe date={prog.today} />}
+      {tab === 'breathe' && <Breathe date={prog.today} defaultMin={day?.mvd ? 1 : 3} />}
       {tab === 'test' && <FocusTest date={prog.today} />}
     </Page>
   );
 }
 
+const ACTIVITY: Partial<Record<SessionKind, Activity>> = {
+  focus: 'focus',
+  attention: 'attention',
+  breath: 'breath',
+};
+
+/** Saves a session, ticks what it completed, and returns it with the sessions before it. */
 async function saveSession(
   date: string,
   kind: SessionKind,
-  data: Partial<Omit<Parameters<typeof db.focusSessions.add>[0], 'date' | 'kind'>> & {
+  data: Partial<Omit<FocusSession, 'date' | 'kind'>> & {
     plannedMin: number;
     actualMin: number;
   },
 ) {
-  await db.focusSessions.add({ date, kind, ...data });
+  const earlier = await db.focusSessions.where('kind').equals(kind).toArray();
+  const session: FocusSession = { date, kind, ...data };
+  await db.focusSessions.add(session);
+  const activity = ACTIVITY[kind];
+  if (activity) await recordActivity(date, activity);
+  return { session, earlier };
 }
 
 function BigClock({ sec, running }: { sec: number; running: boolean }) {
@@ -92,6 +125,7 @@ function FocusBlock({ date, defaultMin }: { date: string; defaultMin: number }) 
   const [phase, setPhase] = useState<'setup' | 'running' | 'review'>('setup');
   const [quality, setQuality] = useState<number>();
   const [review, setReview] = useState('');
+  const [feedback, setFeedback] = useState<string[]>([]);
   const timer = useTimer(minutes * 60, () => bell(2));
 
   function finish() {
@@ -99,7 +133,7 @@ function FocusBlock({ date, defaultMin }: { date: string; defaultMin: number }) 
     setPhase('review');
   }
   async function save() {
-    await saveSession(date, 'focus', {
+    const { session, earlier } = await saveSession(date, 'focus', {
       plannedMin: minutes,
       actualMin: Math.max(1, Math.round(timer.elapsedSec / 60)),
       intention,
@@ -107,6 +141,7 @@ function FocusBlock({ date, defaultMin }: { date: string; defaultMin: number }) 
       quality,
       review,
     });
+    setFeedback(focusBlockFeedback(session, earlier));
     timer.reset();
     setWanders(0);
     setIntention('');
@@ -119,6 +154,7 @@ function FocusBlock({ date, defaultMin }: { date: string; defaultMin: number }) 
     <Card title="Focus block">
       {phase === 'setup' && (
         <div className="space-y-4">
+          <MentorFeedback lines={feedback} />
           <Field label="Intention — what does “done” look like for this block?">
             <input
               className="input"
@@ -148,7 +184,7 @@ function FocusBlock({ date, defaultMin }: { date: string; defaultMin: number }) 
           <button
             className="btn-primary w-full"
             disabled={!intention.trim()}
-            onClick={() => (timer.start(), setPhase('running'))}
+            onClick={() => (timer.start(), setFeedback([]), setPhase('running'))}
           >
             Start {minutes}-minute block
           </button>
@@ -207,6 +243,7 @@ function AttentionTraining({ date, defaultMin }: { date: string; defaultMin: num
   const [minutes, setMinutes] = useState(defaultMin);
   const [wanders, setWanders] = useState(0);
   const [done, setDone] = useState(false);
+  const [feedback, setFeedback] = useState<string[]>([]);
   const timer = useTimer(
     minutes * 60,
     () => {
@@ -217,11 +254,12 @@ function AttentionTraining({ date, defaultMin }: { date: string; defaultMin: num
   );
 
   async function save() {
-    await saveSession(date, 'attention', {
+    const { session, earlier } = await saveSession(date, 'attention', {
       plannedMin: minutes,
       actualMin: Math.max(1, Math.round(timer.elapsedSec / 60)),
       wanders,
     });
+    setFeedback(attentionFeedback(session, earlier));
     timer.reset();
     setWanders(0);
     setDone(false);
@@ -229,6 +267,11 @@ function AttentionTraining({ date, defaultMin }: { date: string; defaultMin: num
 
   return (
     <Card title="Attention training">
+      {feedback.length > 0 && !timer.running && (
+        <div className="mb-3">
+          <MentorFeedback lines={feedback} />
+        </div>
+      )}
       <p className="muted mb-3">
         Sit upright. Attend to the sensation of breathing. When you notice you have wandered, tap
         once and return. The return is the training.
@@ -264,7 +307,7 @@ function AttentionTraining({ date, defaultMin }: { date: string; defaultMin: num
           </button>
         </div>
       ) : (
-        <button className="btn-primary w-full" onClick={timer.start}>
+        <button className="btn-primary w-full" onClick={() => (setFeedback([]), timer.start())}>
           Begin {minutes} minutes
         </button>
       )}
@@ -278,9 +321,10 @@ const BREATH_PHASES = [
   { label: 'Long exhale', sec: 6, scale: 0.6 },
 ];
 
-function Breathe({ date }: { date: string }) {
-  const [minutes, setMinutes] = useState(3);
+function Breathe({ date, defaultMin }: { date: string; defaultMin: number }) {
+  const [minutes, setMinutes] = useState(defaultMin);
   const [step, setStep] = useState(0);
+  const [saved, setSaved] = useState(false);
   const timer = useTimer(minutes * 60, () => {
     bell(1);
     void stop(true);
@@ -301,8 +345,10 @@ function Breathe({ date }: { date: string }) {
   async function stop(completed: boolean) {
     timer.pause();
     const actual = Math.max(1, Math.round(timer.elapsedSec / 60));
-    if (completed || timer.elapsedSec >= 30)
+    if (completed || timer.elapsedSec >= 30) {
       await saveSession(date, 'breath', { plannedMin: minutes, actualMin: actual });
+      setSaved(true);
+    }
     timer.reset();
     setStep(0);
   }
@@ -310,6 +356,13 @@ function Breathe({ date }: { date: string }) {
   const p = BREATH_PHASES[step];
   return (
     <Card title="Cyclic sighing">
+      {saved && !timer.running && (
+        <div className="mb-3">
+          <MentorFeedback
+            lines={['Breathing reset done. Use it between blocks, or whenever stress climbs.']}
+          />
+        </div>
+      )}
       <p className="muted mb-3">
         Two inhales through the nose (the second a short top-up), then a long, slow exhale through
         the mouth.
@@ -345,7 +398,7 @@ function Breathe({ date }: { date: string }) {
               </button>
             ))}
           </div>
-          <button className="btn-primary w-full" onClick={timer.start}>
+          <button className="btn-primary w-full" onClick={() => (setSaved(false), timer.start())}>
             Start
           </button>
         </div>

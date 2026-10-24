@@ -28,7 +28,15 @@ it is about 30 minutes. The app shows today's version, adjusted for your phase, 
 - **Recorded talk (3×/week, 5 min)** — 2 minutes on a [talk topic](drills/talk-topics.md), then review.
 - **Reflection journal (10 min)** — one win · one emotion named · one lesson · tomorrow's if-then · (optional) gratitude.
 - **Quick log (≤ 3 min)** — sleep, exercise, stress, mood, energy, clarity, caffeine cut-off, screen time.
+  In the app, the morning check-in and *Close the day* fill most of it with a few taps.
 - **Wind-down** — screens off 45–60 minutes before your fixed bedtime.
+
+## Light day
+For a short night, low energy or high stress when you can still do something. Keep the habits, the purpose and
+if-then plan, a **shorter attention session (about half)**, your study blocks with the focus protocol and the
+journal; **leave out the thinking drill and the recorded talk**. The app suggests a light day from your morning
+check-in; you can always override it. A light day counts like a full one — sizing the day to how you are is what
+keeps you near the ~80% success that builds habits ([Programme rules](00-foundations/programme-rules.md), rule 3).
 
 ## Minimum viable day (≈ 5 min)
 For illness, travel, bad news or exhaustion. It keeps the chain unbroken:

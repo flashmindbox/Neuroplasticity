@@ -1,6 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
-import { CLUSTERS, DIMENSIONS, type DimensionId } from '../content/dimensions';
+import { CopyBox } from '../components/CopyPaste';
+import { MentorAvatar } from '../components/mentor';
+import { CLUSTERS, DIMENSIONS, DIMENSION_BY_ID, type DimensionId } from '../content/dimensions';
+import { PHASES } from '../content/roadmap';
 import {
   Card,
   Field,
@@ -14,7 +17,9 @@ import {
 } from '../components/ui';
 import { db, type DailyLog, type WeeklyReview } from '../lib/db';
 import { addDays, formatKey, weekStart, type DateKey } from '../lib/dates';
-import { plannedIds, useProgramme } from '../lib/hooks';
+import { portableMentorPrompt, type MentorReviewInput } from '../lib/ai/portable';
+import { plannedIds, recordActivity, useProgramme } from '../lib/hooks';
+import { weeklyNote, type WeeklyNote } from '../lib/mentor';
 import { weekMetrics, type WeekMetrics } from '../lib/metrics';
 import { useSetting } from '../lib/settings';
 
@@ -52,35 +57,54 @@ function Weekly() {
   const charter = useSetting('charter');
   const [week, setWeek] = useState<DateKey | null>(null);
   const ws = week ?? (prog ? weekStart(prog.today) : '');
+  // The week under review plus the three before it: enough for a trend and the mentor prompt.
+  const from = ws && addDays(ws, -21);
+  const to = ws && addDays(ws, 6);
   const logs = useLiveQuery(
-    () => db.dailyLogs.where('date').between(ws, addDays(ws, 6), true, true).toArray(),
-    [ws],
+    () => db.dailyLogs.where('date').between(from, to, true, true).toArray(),
+    [from, to],
   );
   const sessions = useLiveQuery(
-    () => db.focusSessions.where('date').between(ws, addDays(ws, 6), true, true).toArray(),
-    [ws],
+    () => db.focusSessions.where('date').between(from, to, true, true).toArray(),
+    [from, to],
   );
   const mocks = useLiveQuery(
-    () => db.mocks.where('date').between(ws, addDays(ws, 6), true, true).toArray(),
-    [ws],
+    () => db.mocks.where('date').between(from, to, true, true).toArray(),
+    [from, to],
   );
   // null = no review yet; undefined = still loading.
   const existing = useLiveQuery(async () => (await db.weeklyReviews.get(ws)) ?? null, [ws]);
 
-  const metrics = useMemo(() => {
-    if (!prog || !logs || !sessions || !mocks) return null;
+  const weeks = useMemo(() => {
+    if (!prog || !logs || !sessions || !mocks || !ws) return null;
     const map = new Map<DateKey, DailyLog>(logs.map((l) => [l.date, l]));
-    return weekMetrics(
-      ws,
-      map,
-      sessions,
-      mocks,
-      (d) => plannedIds(d, prog.dates, charter?.targets ?? []),
-      prog.today,
-    );
+    const first = weekStart(prog.dates.programmeStart);
+    return [21, 14, 7, 0]
+      .map((back) => addDays(ws, -back))
+      .filter((w) => w >= first || w === ws)
+      .map((w) => ({
+        weekStart: w,
+        metrics: weekMetrics(
+          w,
+          map,
+          sessions,
+          mocks,
+          (d) => plannedIds(d, prog.dates, charter?.targets ?? []),
+          prog.today,
+        ),
+      }));
   }, [prog, logs, sessions, mocks, ws, charter]);
 
-  if (!prog || !metrics || existing === undefined) return null;
+  if (!prog || !weeks || existing === undefined) return null;
+  const current = weeks[weeks.length - 1].metrics;
+  const prev = weeks.length > 1 ? weeks[weeks.length - 2].metrics : null;
+  const promptBase: Omit<MentorReviewInput, 'review' | 'note'> = {
+    phase: PHASES[prog.state.phase].name,
+    programmeWeek: prog.state.week,
+    daysToPrelims: prog.state.daysToPrelims,
+    targets: (charter?.targets ?? []).map((t) => DIMENSION_BY_ID[t].name),
+    weeks: weeks.map((w) => ({ weekStart: formatKey(w.weekStart), metrics: w.metrics })),
+  };
 
   return (
     <>
@@ -103,9 +127,55 @@ function Weekly() {
         key={`${ws}-${existing ? 'saved' : 'new'}`}
         ws={ws}
         existing={existing}
-        metrics={metrics}
+        metrics={current}
+        prev={prev}
+        promptBase={promptBase}
       />
     </>
+  );
+}
+
+function MentorNote({ note, onUse }: { note: WeeklyNote; onUse: () => void }) {
+  return (
+    <section
+      aria-label="Your mentor on this week"
+      className="card flex gap-3 border-brand-200 dark:border-brand-800"
+    >
+      <MentorAvatar />
+      <div className="min-w-0 space-y-2 text-sm">
+        <p className="text-xs font-semibold tracking-wide text-brand-700 uppercase dark:text-brand-200">
+          Your mentor on this week
+        </p>
+        <p className="text-base font-semibold">{note.headline}</p>
+        {note.wins.length > 0 && (
+          <div>
+            <h3 className="font-semibold">What went well</h3>
+            <ul className="list-disc space-y-0.5 pl-5">
+              {note.wins.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {note.watch.length > 0 && (
+          <div>
+            <h3 className="font-semibold">Keep an eye on</h3>
+            <ul className="list-disc space-y-0.5 pl-5">
+              {note.watch.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div>
+          <h3 className="font-semibold">The one change for next week</h3>
+          <p>{note.change}</p>
+        </div>
+        <button className="btn-secondary px-3 py-1.5 text-xs" onClick={onUse}>
+          Use this as my change
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -113,10 +183,14 @@ function WeeklyForm({
   ws,
   existing,
   metrics,
+  prev,
+  promptBase,
 }: {
   ws: DateKey;
   existing: WeeklyReview | null;
   metrics: WeekMetrics;
+  prev: WeekMetrics | null;
+  promptBase: Omit<MentorReviewInput, 'review' | 'note'>;
 }) {
   const [form, setForm] = useState(() =>
     existing
@@ -130,6 +204,7 @@ function WeeklyForm({
       : { worked: '', change: '', ruleActions: '', lowestSource: '', nextWeek: '' },
   );
   const [saved, setSaved] = useState(false);
+  const note = weeklyNote(metrics, prev);
 
   const summary = [
     `Rewire — week of ${formatKey(ws)}`,
@@ -143,12 +218,17 @@ function WeeklyForm({
 
   async function save() {
     await db.weeklyReviews.put({ weekStart: ws, ...form, metrics: { ...metrics } });
+    await recordActivity(ws, 'review');
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
   return (
     <>
+      <MentorNote
+        note={note}
+        onUse={() => setForm((f) => ({ ...f, change: f.change.trim() ? f.change : note.change }))}
+      />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat
           label="Habit completion"
@@ -218,6 +298,17 @@ function WeeklyForm({
             </button>
           </div>
         </div>
+      </Card>
+      <Card title="Talk it through with Claude">
+        <p className="muted mb-3">
+          For a deeper review, copy this prompt into Claude Code (type <code>/rewire-coach</code>{' '}
+          and paste), claude.ai or the Claude app. It contains this week’s numbers, the weeks before
+          and your answers above — never your journal.
+        </p>
+        <CopyBox
+          text={portableMentorPrompt({ ...promptBase, review: form, note })}
+          label="Copy mentor-review prompt"
+        />
       </Card>
     </>
   );

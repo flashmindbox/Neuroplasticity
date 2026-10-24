@@ -21,7 +21,7 @@ import {
 import { brainCheckStatus, baselineOf, compositeChange, sortedSessions } from '../lib/brainCheck';
 import { db } from '../lib/db';
 import { addDays } from '../lib/dates';
-import { useProgramme } from '../lib/hooks';
+import { recordActivity, useProgramme } from '../lib/hooks';
 import { clarityOf, fogAudit } from '../lib/metrics';
 import { ACTION_MESSAGES, scoreScreening, type ScreeningResult } from '../lib/screening';
 import { setSetting, useSetting } from '../lib/settings';
@@ -106,6 +106,7 @@ function BrainCheck() {
             <BrainCheckRunner
               onDone={async (r) => {
                 await db.brainChecks.add({ ...r, date: prog.today });
+                await recordActivity(prog.today, 'brain');
                 setRunning(false);
               }}
             />
