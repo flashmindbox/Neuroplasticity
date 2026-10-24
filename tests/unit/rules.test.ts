@@ -91,3 +91,10 @@ describe('decision rules', () => {
     expect(ids(base({ lastBackupAt: '2026-11-01T00:00:00Z' }))).toContain('backup');
   });
 });
+
+describe('robustness', () => {
+  it('skips malformed screening rows instead of throwing', () => {
+    const screenings = [{ date: '2026-12-10', kind: 'phq9' as const, answers: [1, 2], total: 3 }];
+    expect(() => evaluateRules(base({ screenings }))).not.toThrow();
+  });
+});

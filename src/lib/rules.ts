@@ -40,7 +40,11 @@ export function latestScreenings(entries: ScreeningEntry[], today: DateKey) {
   > = {};
   for (const e of [...entries].sort((a, b) => (a.date < b.date ? -1 : 1))) {
     if (daysBetween(e.date, today) > SCREENING_FRESH_DAYS) continue;
-    latest[e.kind] = { entry: e, action: scoreScreening(e.kind, e.answers).action };
+    try {
+      latest[e.kind] = { entry: e, action: scoreScreening(e.kind, e.answers).action };
+    } catch {
+      // A malformed row (e.g., from an edited backup) must not take down the Today page.
+    }
   }
   return latest;
 }

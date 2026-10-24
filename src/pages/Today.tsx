@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DIMENSION_BY_ID } from '../content/dimensions';
 import {
@@ -216,7 +216,7 @@ function Checklist({
 }: {
   items: ProtocolItem[];
   checks: Record<string, boolean>;
-  onToggle: (id: string, v: boolean) => void;
+  onToggle: (id: string, v: boolean) => Promise<unknown> | void;
 }) {
   const slots = (Object.keys(SLOT_LABELS) as Slot[]).filter((s) => items.some((i) => i.slot === s));
   return (
@@ -254,23 +254,39 @@ function CheckRow({
   route,
 }: {
   checked: boolean;
-  onChange: (v: boolean) => void;
+  onChange: (v: boolean) => Promise<unknown> | void;
   title: string;
   detail?: string;
   route?: string;
 }) {
+  // Optimistic: show the new state immediately and keep it until the stored value catches up.
+  const [pending, setPending] = useState<boolean | null>(null);
+  const [prevChecked, setPrevChecked] = useState(checked);
+  if (prevChecked !== checked) {
+    setPrevChecked(checked);
+    setPending(null);
+  }
+  const shown = pending ?? checked;
   return (
     <li className="flex items-start gap-3">
       <input
         type="checkbox"
         aria-label={title}
         className="mt-0.5 h-5 w-5 shrink-0 accent-brand-700"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        checked={shown}
+        onChange={async (e) => {
+          const v = e.target.checked;
+          setPending(v);
+          try {
+            await onChange(v);
+          } catch {
+            setPending(null);
+          }
+        }}
       />
       <div className="min-w-0 flex-1">
         <div
-          className={`text-sm font-medium ${checked ? 'text-slate-400 line-through dark:text-slate-500' : ''}`}
+          className={`text-sm font-medium ${shown ? 'text-slate-400 line-through dark:text-slate-500' : ''}`}
         >
           {title}
         </div>

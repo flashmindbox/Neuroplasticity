@@ -62,7 +62,7 @@ export default function Interview() {
           </button>
         </Notice>
       ) : active ? (
-        <Board session={active} onClose={() => setActiveId(null)} />
+        <Board session={active} apiKey={apiKey} onClose={() => setActiveId(null)} />
       ) : (
         <Card title="New interview">
           {!charter?.profile?.homeState && (
@@ -118,8 +118,15 @@ const avgScore = (s: Record<string, number>) => {
   return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : '–';
 };
 
-function Board({ session, onClose }: { session: InterviewSession; onClose: () => void }) {
-  const apiKey = useSetting('apiKey');
+function Board({
+  session,
+  apiKey,
+  onClose,
+}: {
+  session: InterviewSession;
+  apiKey: string;
+  onClose: () => void;
+}) {
   const [streaming, setStreaming] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +143,7 @@ function Board({ session, onClose }: { session: InterviewSession; onClose: () =>
     setError(null);
     setStreaming('');
     try {
-      const turn = await boardTurn(createClient(apiKey ?? ''), session.system, messages, (d) =>
+      const turn = await boardTurn(createClient(apiKey), session.system, messages, (d) =>
         setStreaming((s) => s + d),
       );
       await db.interviews.update(session.id!, {
@@ -159,10 +166,10 @@ function Board({ session, onClose }: { session: InterviewSession; onClose: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(
-    () => bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }),
-    [session.messages.length, streaming],
-  );
+  useEffect(() => {
+    // Braces matter: newer browsers return a Promise from scrollIntoView, and an effect must not return one.
+    bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [session.messages.length, streaming]);
 
   async function send() {
     const text = answer.trim();
@@ -177,7 +184,7 @@ function Board({ session, onClose }: { session: InterviewSession; onClose: () =>
     setBusy(true);
     setError(null);
     try {
-      const d = await boardDebrief(createClient(apiKey ?? ''), session.messages);
+      const d = await boardDebrief(createClient(apiKey), session.messages);
       await db.interviews.update(session.id!, { debrief: d });
     } catch (e) {
       setError(e instanceof AiError ? e.message : 'Something went wrong.');
