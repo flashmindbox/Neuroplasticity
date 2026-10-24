@@ -176,7 +176,10 @@ export interface Experiment {
 
 export interface InterviewMessage {
   role: 'user' | 'assistant';
+  /** Display text. */
   content: string;
+  /** Assistant content blocks exactly as returned (thinking included), replayed verbatim. */
+  raw?: unknown[];
 }
 
 export interface InterviewDebrief {
@@ -189,6 +192,8 @@ export interface InterviewDebrief {
 export interface InterviewSession {
   id?: number;
   date: DateKey;
+  /** Frozen at session start so the conversation prefix never changes. */
+  system: string;
   messages: InterviewMessage[];
   debrief?: InterviewDebrief;
 }
